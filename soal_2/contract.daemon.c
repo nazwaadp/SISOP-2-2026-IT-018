@@ -8,14 +8,11 @@
 #include <fcntl.h> // untuk open
 #include <signal.h> // untuk signal
 
-// variabel global untuk menyimpan status program jalan atau tidak
-int running = 1;
-
-// isi contract.txt saat pertama kali dibuat
-const char *original_quote = "“A promise to keep going, even when unseen.”\n";
+int running = 1; // variabel global untuk menyimpan status program jalan atau tidak
+const char *original_quote = "“A promise to keep going, even when unseen.”\n"; // isi contract.txt saat pertama kali dibuat
 
 void stop_daemon(int sig) { // dipakai kalau daemon dihentikan
-    running = 0; // kalau kena sinyal stop, ubah running jadi 0 agar loop berhenti
+    running = 0; // kl kena sinyal stop, ubah running jadi 0 agar loop berhenti
 }
 
 void get_timestamp(char *buffer, size_t size) { // untuk mengambil waktu sekarang dalam format YYYY-MM-DD HH:MM:SS
@@ -23,7 +20,6 @@ void get_timestamp(char *buffer, size_t size) { // untuk mengambil waktu sekaran
     struct tm *time_info; // pointer ke struktur waktu lokal
     time(&now); // ambil waktu sekarang
     time_info = localtime(&now); // ubah ke waktu lokal
-
     strftime(buffer, size, "%Y-%m-%d %H:%M:%S", time_info); // formatnya
 }
 
@@ -46,8 +42,7 @@ void write_log_message() {
 
     log_file = fopen("work.log", "a"); // buka file log mode append
     if (log_file != NULL) {
-        fprintf(log_file, "[%s] still working... %s\n", timestamp, status_text);
-        // tulis log ke file
+        fprintf(log_file, "[%s] still working... %s\n", timestamp, status_text);  // tulis log ke file
         fclose(log_file); // tutup file
     }
 }
@@ -114,31 +109,21 @@ int is_contract_modified() {
     contract_file = fopen("contract.txt", "r"); // buka file untuk dibaca
     if (contract_file == NULL) {
         return 0; // kalau file tidak ada, bukan kasus modify, tapi kasus deleted
-    }
-
-    if (fgets(line1, sizeof(line1), contract_file) == NULL) { // baca baris pertama
+    } if (fgets(line1, sizeof(line1), contract_file) == NULL) { // baca baris pertama
         fclose(contract_file);
         return 1; // kalau gagal baca, anggap file rusak / berubah
-    }
-
-    if (fgets(line2, sizeof(line2), contract_file) == NULL) { // baca baris kedua
+    } if (fgets(line2, sizeof(line2), contract_file) == NULL) { // baca baris kedua
         fclose(contract_file);
         return 1; // kalau baris kedua tidak ada, berarti isi file berubah
-    }
-    fclose(contract_file); // tutup file
+    } fclose(contract_file); // tutup file
 
     // bandingkan baris pertama dengan quote asli
     if (strcmp(line1, original_quote) != 0) {
         return 1; // kalau beda, berarti file diubah
-    }
-
-    // cek apakah baris kedua diawali "created at: " atau "restored at: "
-    if (strncmp(line2, "created at: ", 12) != 0 &&
-        strncmp(line2, "restored at: ", 13) != 0) {
+    } if (strncmp(line2, "created at: ", 12) != 0 &&
+        strncmp(line2, "restored at: ", 13) != 0) {  // cek apakah baris kedua diawali "created at: " atau "restored at: "
         return 1; // kalau format baris kedua tidak sesuai, berarti diubah
-    }
-
-    return 0; // kalau aman, file tidak diubah
+    } return 0; // kalau aman, file tidak diubah
 }
 
 int main() {
@@ -152,33 +137,23 @@ int main() {
     signal(SIGINT, stop_daemon);
 
     pid = fork(); // proses baru
-
     if (pid < 0) {
         exit(EXIT_FAILURE); // kalau fork gagal, keluar
-    }
-
-    if (pid > 0) {
+    } if (pid > 0) {
         exit(EXIT_SUCCESS); // parent selesai, child lanjut jadi daemon
-    }
-
-    // membuat session baru agar lepas dari terminal
-    if (setsid() < 0) {
+    } if (setsid() < 0) { // membuat session baru agar lepas dari terminal
         exit(EXIT_FAILURE); // kalau gagal, keluar
     }
 
     // fork kedua supaya daemon lebih stabil dan tidak jadi session leader
     pid = fork();
-
     if (pid < 0) {
         exit(EXIT_FAILURE); // kalau fork gagal
-    }
-
-    if (pid > 0) {
+    } if (pid > 0) {
         exit(EXIT_SUCCESS); // parent kedua keluar
     }
 
     umask(0); // reset permission mask
-
     chdir("."); // tetap di folder saat ini
 
     // tutup file descriptor standar
@@ -186,25 +161,21 @@ int main() {
     close(STDOUT_FILENO);
     close(STDERR_FILENO);
 
-    // buat contract.txt saat program mulai
-    create_contract_file();
+    create_contract_file(); // buat contract.txt saat program mulai
 
     while (running) { // loop utama daemon
         write_log_message(); // tulis still working tiap 5 detik
 
         // cek adanya contract.txt
-        if (stat("contract.txt", &file_info) != 0) {
-            // kalau file tidak ada, restore
+        if (stat("contract.txt", &file_info) != 0) { // kalau file tidak ada, restore
             sleep(1); // tunggu 1 detik biar sesuai soal 1-2 detik
             restore_contract_file();
         } else {
-            // kalau ada, cek apakah isinya diubah
-            if (is_contract_modified()) {
+            if (is_contract_modified()) { // kalau ada, cek apakah isinya diubah
                 write_violation_log(); // tulis contract violated.
-                restore_contract_file(); // balikin isi file
+                restore_contract_file(); // kembaliin isi file
             }
         }
-
         sleep(5); // tunggu 5 detik sebelum loop berikutnya
     }
 
